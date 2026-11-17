@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="si" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VURA E-BOOK STORE </title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & Noto Sans Sinhala -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Sinhala:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- pdf-lib for Client-Side PDF Watermarking & Generation -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans Sinhala"', 'Inter', 'sans-serif'],
+            display: ['Inter', '"Noto Sans Sinhala"', 'sans-serif'],
+          },
+          colors: {
+            obsidian: '#0a0a0a',
+            slatecard: '#141414',
+            slateborder: '#262626',
+            gold: {
+              400: '#f5c518',
+              500: '#d4af37',
+              600: '#b59226',
+            },
+            crimson: {
+              500: '#ef4444',
+              600: '#dc2626',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      background-color: #0a0a0a;
+      color: #f5f5f5;
+      font-family: 'Noto Sans Sinhala', 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Subtle Luxury Gold Glow */
+    .gold-glow {
+      box-shadow: 0 0 25px rgba(212, 175, 55, 0.15);
+    }
+    .gold-glow-hover:hover {
+      box-shadow: 0 10px 35px rgba(212, 175, 55, 0.25);
+      border-color: rgba(212, 175, 55, 0.6);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #262626;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #d4af37;
+    }
+
+    /* Shake animation for invalid PIN */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .animate-shake {
+      animation: shake 0.4s ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-gold-500 selection:text-black">
+
+  <!-- ===================================================================== -->
+  <!-- SITE CONFIGURATION (ඔබට PIN අංකය සහ පොත් වෙනස් කිරීමට මෙතැන භාවිතා කරන්න) -->
+  <!-- ===================================================================== -->
+  <script>
+    /**
+     * MASTER_PIN:
+     * ඔබගේ පාරිභෝගිකයින්ට ලබා දෙන රහස් PIN අංකය මෙතැන වෙනස් කළ හැක.
+     * දැනට තිබෙන PIN අංකය: "202688"
+     */
+    const SITE_CONFIG = {
+      MASTER_PIN: "202688", // <-- ඔබට කැමති PIN අංකයක් මෙතැනට දමන්න (උදා: "994422")
+      WATERMARK_OPACITY: 0.15, // Watermark එකේ විනිවිදභාවය (0.10 - 0.18 අතර තබා ගැනීමෙන් PDF content එකට බාධාවක් නොවේ)
+      USE_REAL_PDF_FILES: false // GitHub එකට ඔබේ සැබෑ PDF දැමූ පසු මෙය true කරන්න!
+    };
+
+    /**
+     * EBOOKS_DATA:
+     * ඔබගේ E-Books ලැයිස්තුව.
+     * GitHub එකේ `books/` folder එකට ඔබේ PDF ගොනු දමා `pdfPath` එක නිවැරදිව ලබා දෙන්න.
+     */
+    const EBOOKS_DATA = [
+      {
+        id: "book-1",
+        title: "CRYPTO BASIC",
+        sinhalaTitle: "Crypto Trading සම්බන්ද මූලික දැනුම සහිත මාර්ගෝපදේශය",
+        edition: "EDITION 2026 • VOL 01",
+        pages: "36 Pages • PDF",
+        price: "LKR 3,500",
+        badge: "NEW RELEASE",
+        accentFrom: "#d4af37",
+        accentTo: "#785a12",
+        pdfPath: "./books/book1.pdf", // GitHub repo එකේ books/book1.pdf ලෙස තබන්න
+        description: "Crypto Trading සම්බන්ද කිසිඳු දැනුමක් නොමැති කෙනෙකු වුවද මෙම පොත කියවා අවසන් කිරීමෙන් මූලික දැනුම ලබාගැනීමට හැකිවෙයි."
+      },
+      {
+        id: "book-2",
+        title: "CRYPTO ANALYSIS",
+        sinhalaTitle: "Market Analyze සම්බන්ද සම්පූර්ණ මාර්ගෝපදේශය",
+        edition: "EDITION 2026 • VOL 02",
+        pages: "46 Pages • PDF",
+        price: "LKR 4,500",
+        badge: "NEW RELEASE",
+        accentFrom: "#f5c518",
+        accentTo: "#5c4308",
+        pdfPath: "./books/book2.pdf", // GitHub repo එකේ books/book2.pdf ලෙස තබන්න
+        description: "මෙම පොත කියවා අවසාන කරන ඔබට Profitable Trader කෙනෙකු ලෙස තනිවම Market එක Analyze කර සාර්ථක Trade වලට පිවිසීමට හැකියාව ලැබෙයි."
+      },
+      {
+        id: "book-3",
+        title: "Psychology Secrets",
+        sinhalaTitle: "Trading මනෝවිද්‍යාත්මක රහස්",
+        edition: "EDITION 2026 • VOL 03",
+        pages: " •••Pages • PDF",
+        price: "FREE",
+        badge: "NOT RELEASED",
+        accentFrom: "#eab308",
+        accentTo: "#422006",
+        pdfPath: "./books/book3.pdf", // GitHub repo එකේ books/book3.pdf ලෙස තබන්න
+        description: "මෙම පොත තවමත් යාවත්කාලීන කර නොමැත."
+      }
+    ];
+  </script>
+
+  <!-- ==================== NAVIGATION BAR ==================== -->
+  <header class="sticky top-0 z-40 bg-obsidian/90 backdrop-blur-md border-b border-slateborder">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('ebooks')">
+          <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-black font-extrabold text-xl shadow-lg">
+            <i class="fa-solid fa-book-open"></i>
+          </div>
+          <div>
+            <span class="font-display font-extrabold text-lg sm:text-xl tracking-wider text-white block leading-none">
+              VURA <span class="text-gold-400">E-BOOKS</span>
+            </span>
+            <span class="text-[11px] text-neutral-400 tracking-widest uppercase">Official Digital Library</span>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex items-center gap-2 sm:gap-3">
+          <button
+            id="tab-btn-home"
+            onclick="switchTab('home')"
+            class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 text-neutral-400 hover:text-white hover:bg-neutral-900"
+          >
+            <i class="fa-solid fa-house mr-1.5"></i> Home
+          </button>
+
+          <button
+            id="tab-btn-ebooks"
+            onclick="switchTab('ebooks')"
+            class="px-4 sm:px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-gradient-to-r from-gold-500 to-gold-400 text-black shadow-md"
+          >
+            <i class="fa-solid fa-book mr-1.5"></i> E-Books
+          </button>
+
+          <!--<button
+            onclick="openSetupModal()"
+            title="GitHub & PIN Setup Guide"
+            class="hidden md:inline-flex items-center px-3.5 py-2.5 rounded-xl text-xs font-medium border border-slateborder text-neutral-300 hover:border-gold-500 hover:text-gold-400 transition-all"
+          >
+            <i class="fa-brands fa-github mr-1.5 text-sm"></i> Setup Guide
+          </button>-->
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <main class="flex-grow">
+
+    <!-- TAB 1: HOME SECTION -->
+    <section id="section-home" class="hidden py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div class="bg-slatecard border border-slateborder rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden gold-glow">
+        <div class="absolute -top-24 -right-24 w-72 h-72 bg-gold-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-72 h-72 bg-gold-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-400 text-xs font-semibold tracking-wider uppercase mb-6">
+          <i class="fa-solid fa-shield-halved"></i> Copyright Protected Digital Publications
+        </span>
+
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight mb-6">
+           <span class="text-transparent bg-clip-text bg-gradient-to-r from-gold-400 to-amber-200">OFFICIAL E-BOOK PORTAL</span>
+        </h1>
+
+        <p class="max-w-2xl mx-auto text-neutral-300 text-base sm:text-lg leading-relaxed mb-10">
+          අප විසින් රචිත සියලුම E-Books දැන් ඔබට ඉතා ආරක්ෂිතව මෙම වෙබ් අඩවිය හරහා ලබාගත හැක. ඔබගේ නම සහ ලියාපදිංචි අංකය (Reg No) ඇතුළත් කර ඔබට ලැබුණු PIN අංකය යොදා පොත Download කරගන්න.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button
+            onclick="switchTab('ebooks')"
+            class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 hover:from-gold-400 hover:to-yellow-300 text-black font-bold text-base shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer"
+          >
+            <i class="fa-solid fa-book-open mr-2"></i> View E-Books
+          </button>
+
+          <!--<button
+            onclick="openSetupModal()"
+            class="w-full sm:w-auto px-7 py-4 rounded-xl bg-neutral-900 border border-slateborder hover:border-gold-500 text-neutral-200 font-semibold text-sm transition-all cursor-pointer"
+          >
+            <i class="fa-brands fa-github mr-2 text-gold-400"></i> GitHub Publish උපදෙස්
+          </button>-->
+        </div>
+
+        <!-- Feature Highlights -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 text-left">
+          <div class="bg-obsidian/80 border border-slateborder rounded-2xl p-6">
+            <div class="w-10 h-10 rounded-lg bg-gold-500/15 text-gold-400 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-key"></i>
+            </div>
+            <h3 class="text-white font-bold text-base mb-2">PIN-PROTECTED SYSTEM</h3>
+            <p class="text-neutral-400 text-sm leading-relaxed">අවසර ලත් පාරිභෝගිකයින්ට පමණක් නිවැරදි PIN අංකය ඇතුළත් කර පොත් Download කළ හැක.</p>
+          </div>
+          <div class="bg-obsidian/80 border border-slateborder rounded-2xl p-6">
+            <div class="w-10 h-10 rounded-lg bg-gold-500/15 text-gold-400 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-stamp"></i>
+            </div>
+            <h3 class="text-white font-bold text-base mb-2">REGISTRATION NUMBER </h3>
+            <p class="text-neutral-400 text-sm leading-relaxed">පළමුව අපගේ නියෝජිතයෙකු හරහා Registration Number එකක් ලබාගන්න</p>
+          </div>
+          <div class="bg-obsidian/80 border border-slateborder rounded-2xl p-6">
+            <div class="w-10 h-10 rounded-lg bg-gold-500/15 text-gold-400 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h3 class="text-white font-bold text-base mb-2">INSTANT PDF DOWNLOAD</h3>
+            <p class="text-neutral-400 text-sm leading-relaxed">තත්පර කිහිපයක් ඇතුළත ඔබගේ ජංගම දුරකථනයට හෝ පරිගණකයට PDF ගොනුව ලබාගත හැක.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: E-BOOKS COLLECTION SECTION (DEFAULT ACTIVE) -->
+    <section id="section-ebooks" class="py-12 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <!-- Section Header -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6 border-b border-slateborder pb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-400 text-xs font-semibold mb-3">
+            <span class="w-2 h-2 rounded-full bg-gold-400 animate-pulse"></span>
+            E-BOOKS STORE
+          </div>
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            COLLECTION OF <span class="text-gold-400">E-Books</span> PUBLISHED BY US 
+          </h1>
+          <p class="text-neutral-400 text-sm sm:text-base mt-2 max-w-2xl">
+            ඔබට අවශ්‍ය පොත තෝරා පහළ ඇති <strong class="text-white">"Download"</strong> BUTTON එක ඔබන්න. ඉන්පසු ඔබගේ නම, ලියාපදිංචි අංකය (Reg No) සහ නියෝජිතයාගෙන් ලබා ගත් PIN අංකය ලබා දී PDF FILE එක ලබාගන්න.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3 bg-slatecard border border-slateborder px-4 py-3 rounded-2xl">
+          <i class="fa-solid fa-lock text-gold-400 text-lg"></i>
+          <div class="text-xs">
+            <span class="text-neutral-400 block">Protection</span>
+            <span class="text-white font-semibold">Active & Verified</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- E-Books Grid -->
+      <div id="ebooks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Books will be dynamically injected here via JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="border-t border-slateborder bg-obsidian py-8 px-4 sm:px-6 lg:px-8 mt-12">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500">
+      <p>© 2026 VURA E-BOOK STORE. All Rights Reserved. Unauthorized distribution is strictly prohibited.</p>
+      <div class="flex items-center gap-4">
+        <!--<button onclick="openSetupModal()" class="text-neutral-400 hover:text-gold-400 transition-colors underline underline-offset-4 cursor-pointer">
+          <i class="fa-solid fa-gear mr-1"></i> Owner Setup & GitHub Guide
+        </button>-->
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== DOWNLOAD & VERIFICATION MODAL ==================== -->
+  <div id="download-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+    <div class="bg-slatecard border border-slateborder rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl gold-glow relative animate-fadeIn">
+      
+      <!-- Modal Top Header -->
+      <div class="bg-obsidian/90 px-6 py-5 border-b border-slateborder flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gold-500/15 border border-gold-500/40 flex items-center justify-center text-gold-400">
+            <i class="fa-solid fa-file-shield"></i>
+          </div>
+          <div>
+            <h3 class="text-white font-bold text-base">E-Book Verification & Download</h3>
+            <p class="text-xs text-neutral-400">ඔබගේ නිවැරදි තොරතුරු ඇතුළත් කරන්න</p>
+          </div>
+        </div>
+        <button onclick="closeDownloadModal()" class="w-9 h-9 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Selected Book Summary Banner -->
+      <div class="px-6 py-4 bg-gradient-to-r from-neutral-900 to-neutral-950 border-b border-slateborder flex items-center gap-4">
+        <div id="modal-book-badge" class="w-12 h-14 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex flex-col items-center justify-center text-black font-extrabold text-xs shrink-0 shadow">
+          <span>PDF</span>
+          <i class="fa-solid fa-book mt-0.5"></i>
+        </div>
+        <div class="min-w-0">
+          <span class="text-[11px] uppercase tracking-wider text-gold-400 font-semibold block">Selected E-Book</span>
+          <h4 id="modal-book-title" class="text-white font-bold text-sm sm:text-base truncate">Book Title</h4>
+          <p id="modal-book-sinhala" class="text-neutral-400 text-xs truncate">Sinhala Subtitle</p>
+        </div>
+      </div>
+
+      <!-- Verification Form -->
+      <form id="download-form" onsubmit="handleDownloadSubmit(event)" class="p-6 space-y-5">
+        
+        <!-- 1. Full Name Field -->
+        <div>
+          <label for="input-name" class="block text-xs font-semibold text-neutral-300 mb-2">
+            1. ඔබගේ නම <span class="text-neutral-500">(Full Name)</span> <span class="text-crimson-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-500">
+              <i class="fa-solid fa-user"></i>
+            </span>
+            <input
+              type="text"
+              id="input-name"
+              required
+              placeholder="උදා: Bihindu Kalupahana"
+              class="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-slateborder text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-gold-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <!-- 2. Registration Number Field -->
+        <div>
+          <label for="input-regno" class="block text-xs font-semibold text-neutral-300 mb-2">
+            2. ලියාපදිංචි අංකය <span class="text-neutral-500">(Reg No - Watermark ලෙස යෙදේ)</span> <span class="text-crimson-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-500">
+              <i class="fa-solid fa-id-card"></i>
+            </span>
+            <input
+              type="text"
+              id="input-regno"
+              required
+              placeholder="උදා: V-001-2026"
+              class="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-slateborder text-white placeholder-neutral-600 text-sm uppercase focus:outline-none focus:border-gold-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <!-- 3. Secret PIN Number Field -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="input-pin" class="block text-xs font-semibold text-neutral-300">
+              3. රහස් PIN අංකය <span class="text-neutral-500">(Secret PIN Code)</span> <span class="text-crimson-500">*</span>
+            </label>
+            <button type="button" onclick="togglePinVisibility()" class="text-[11px] text-gold-400 hover:underline cursor-pointer">
+              <i id="pin-eye-icon" class="fa-solid fa-eye mr-1"></i> <span id="pin-eye-text">පෙන්වන්න</span>
+            </button>
+          </div>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gold-400">
+              <i class="fa-solid fa-key"></i>
+            </span>
+            <input
+              type="password"
+              id="input-pin"
+              required
+              autocomplete="off"
+              placeholder="ඔබට ලබා දුන් PIN අංකය ඇතුළත් කරන්න"
+              class="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-slateborder text-white placeholder-neutral-600 text-sm tracking-widest font-mono focus:outline-none focus:border-gold-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <!-- Error Alert Box (Hidden by default) -->
+        <div id="pin-error-box" class="hidden rounded-xl bg-crimson-600/15 border border-crimson-600/60 p-3.5 flex items-start gap-3">
+          <i class="fa-solid fa-circle-exclamation text-crimson-500 mt-0.5"></i>
+          <div class="text-xs text-red-200 leading-relaxed">
+            <strong class="text-crimson-500 block font-bold">වැරදි PIN අංකයකි! (Invalid PIN)</strong>
+            කරුණාකර ඔබට ලබා දුන් නිවැරදි PIN අංකය පමණක් ඇතුළත් කරන්න. වෙනත් PIN අංක සඳහා Download කිරීමට අවසර නොමැත.
+          </div>
+        </div>
+
+        <!-- Success / Processing Status Box -->
+        <div id="download-status-box" class="hidden rounded-xl bg-emerald-500/15 border border-emerald-500/40 p-3.5 flex items-center gap-3">
+          <i class="fa-solid fa-circle-notch fa-spin text-emerald-400 text-base"></i>
+          <div class="text-xs text-emerald-200">
+            <strong class="font-bold block text-emerald-400">PLEASE WAIT...</strong>
+            ඔබගේ තොරතුරු තහවුරු කිරීම ආරම්භ වේ.
+          </div>
+        </div>
+
+        <!-- Watermark Notice -->
+        <div class="rounded-xl bg-neutral-900/90 border border-slateborder p-3 flex items-center gap-2.5 text-[11px] text-neutral-400">
+          <i class="fa-solid fa-shield-halved text-gold-400 text-sm shrink-0"></i>
+          <span>වැරදි PIN අංකයක් නිතර නිතර ලබාදීමෙන් ඔබගේ ගිණුම <strong class="text-neutral-200">අක්‍රීය</strong> වීමට හැකියාවක් පවතී.</span>
+        </div>
+
+        <!-- Final Download Button -->
+        <button
+          type="submit"
+          id="modal-submit-btn"
+          class="w-full py-4 rounded-xl bg-gradient-to-r from-gold-500 via-gold-400 to-gold-500 hover:brightness-110 text-black font-extrabold text-sm sm:text-base tracking-wide shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <i class="fa-solid fa-download"></i>
+          <span>DOWNLOAD PDF</span>
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== OWNER SETUP & GITHUB GUIDE MODAL ==================== 
+  <div id="setup-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+    <div class="bg-slatecard border border-slateborder rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="sticky top-0 bg-obsidian px-6 py-4 border-b border-slateborder flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-brands fa-github text-gold-400 text-xl"></i>
+          <h3 class="text-white font-bold text-base">වෙබ් අඩවිය සකසා ගැනීම සහ GitHub Publish උපදෙස්</h3>
+        </div>
+        <button onclick="closeSetupModal()" class="w-8 h-8 rounded-lg bg-neutral-900 text-neutral-400 hover:text-white flex items-center justify-center cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5 text-sm text-neutral-300 leading-relaxed">
+        <div class="p-4 rounded-2xl bg-gold-500/10 border border-gold-500/30">
+          <p class="text-gold-400 font-bold mb-1">💡 දැනට පරීක්ෂා කිරීම සඳහා භාවිතා කළ හැකි PIN අංකය:</p>
+          <p class="text-white font-mono text-lg font-extrabold tracking-widest">202688</p>
+          <p class="text-xs text-neutral-400 mt-1">මෙම PIN අංකය ගැහුවොත් පමණක් PDF එක Download වේ. වෙනත් ඕනෑම අංකයක් ගැහුවොත් Error පණිවිඩයක් පෙන්වයි.</p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold text-base mb-2">1. ඔබගේ රහස් PIN අංකය වෙනස් කරන ආකාරය:</h4>
+          <p class="text-neutral-400 text-xs">
+            මෙම <code class="text-gold-400 bg-obsidian px-1.5 py-0.5 rounded">index.html</code> ගොනුව Notepad හෝ VS Code වලින් විවෘත කර ඉහළින්ම ඇති <code class="text-gold-400 bg-obsidian px-1.5 py-0.5 rounded">MASTER_PIN: "202688"</code> යන්න ඔබට කැමති රහස් PIN අංකයකට වෙනස් කර Save කරන්න.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold text-base mb-2">2. ඔබගේ සැබෑ PDF පොත් සම්බන්ධ කරන ආකාරය:</h4>
+          <ul class="list-disc list-inside text-xs text-neutral-400 space-y-1.5">
+            <li>ඔබගේ GitHub Repository එක තුළ <code class="text-gold-400 bg-obsidian px-1.5 py-0.5 rounded">books</code> නමින් Folder එකක් සාදන්න.</li>
+            <li>ඒ තුළට ඔබගේ PDF ගොනු <code class="text-gold-400 bg-obsidian px-1.5 py-0.5 rounded">book1.pdf</code>, <code class="text-gold-400 bg-obsidian px-1.5 py-0.5 rounded">book2.pdf</code> ලෙස Upload කරන්න.</li>
+            <li>කේතයේ ඇති <code class="text-gold-400 bg-obsidian px-1.5 py-0.5 rounded">USE_REAL_PDF_FILES: false</code> යන්න <code class="text-emerald-400 bg-obsidian px-1.5 py-0.5 rounded">true</code> ලෙස වෙනස් කරන්න.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold text-base mb-2">3. GitHub Pages හරහා නොමිලේ Publish කරන ආකාරය:</h4>
+          <ol class="list-decimal list-inside text-xs text-neutral-400 space-y-1.5">
+            <li>GitHub.com හි නව Repository එකක් සාදා මෙම <code class="text-gold-400">index.html</code> ගොනුව Upload කරන්න.</li>
+            <li>Repository එකේ <strong>Settings &gt; Pages</strong> වෙත යන්න.</li>
+            <li><strong>Branch</strong> යටතේ <code class="text-white">main</code> තෝරා <strong>Save</strong> ඔබන්න.</li>
+            <li>මිනිත්තු 1-2 කින් ඔබගේ වෙබ් අඩවියට සජීවී Link එකක් (Live URL) ලැබෙනු ඇත.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>-->
+
+  <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
+  <script>
+    let selectedBook = null;
+
+    // Initialize the page on load
+    document.addEventListener('DOMContentLoaded', () => {
+      renderBooksGrid();
+      switchTab('ebooks'); // Open E-Books tab by default so user immediately sees books
+    });
+
+    /**
+     * Switch between 'home' and 'ebooks' tabs
+     */
+    function switchTab(tabName) {
+      const homeSection = document.getElementById('section-home');
+      const ebooksSection = document.getElementById('section-ebooks');
+      const homeBtn = document.getElementById('tab-btn-home');
+      const ebooksBtn = document.getElementById('tab-btn-ebooks');
+
+      const activeClasses = ['bg-gradient-to-r', 'from-gold-500', 'to-gold-400', 'text-black', 'font-bold', 'shadow-md'];
+      const inactiveClasses = ['text-neutral-400', 'hover:text-white', 'hover:bg-neutral-900', 'font-semibold'];
+
+      if (tabName === 'home') {
+        homeSection.classList.remove('hidden');
+        ebooksSection.classList.add('hidden');
+
+        homeBtn.classList.add(...activeClasses);
+        homeBtn.classList.remove(...inactiveClasses);
+
+        ebooksBtn.classList.remove(...activeClasses);
+        ebooksBtn.classList.add(...inactiveClasses);
+      } else {
+        ebooksSection.classList.remove('hidden');
+        homeSection.classList.add('hidden');
+
+        ebooksBtn.classList.add(...activeClasses);
+        ebooksBtn.classList.remove(...inactiveClasses);
+
+        homeBtn.classList.remove(...activeClasses);
+        homeBtn.classList.add(...inactiveClasses);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /**
+     * Render the E-Books Cards Grid
+     */
+    function renderBooksGrid() {
+      const grid = document.getElementById('ebooks-grid');
+      grid.innerHTML = EBOOKS_DATA.map((book) => `
+        <article class="bg-slatecard border border-slateborder rounded-3xl overflow-hidden flex flex-col justify-between transition-all duration-300 gold-glow-hover group">
+          <div>
+            <!-- Luxury 3D-Style Book Cover Mockup -->
+            <div class="relative h-64 bg-gradient-to-br from-neutral-900 via-obsidian to-neutral-950 p-6 flex items-center justify-center border-b border-slateborder overflow-hidden">
+              <!-- Ambient Glow -->
+              <div class="w-40 h-40 rounded-full blur-2xl opacity-25 absolute" style="background: ${book.accentFrom};"></div>
+
+              <!-- Top Badge -->
+              <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-black/70 border border-gold-500/40 text-gold-400">
+                ${book.badge}
+              </span>
+
+              <!-- Book Cover Card -->
+              <div class="relative w-36 h-48 rounded-r-xl rounded-l-sm shadow-2xl p-4 flex flex-col justify-between border border-white/15 transform group-hover:scale-105 group-hover:-rotate-1 transition-transform duration-300"
+                   style="background: linear-gradient(145deg, #1c1917 0%, #09090b 65%, ${book.accentTo} 100%); box-shadow: -6px 8px 20px rgba(0,0,0,0.85), inset 3px 0 6px rgba(255,255,255,0.12);">
+                <!-- Book Spine Highlight -->
+                <div class="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-white/20 to-transparent rounded-l-sm"></div>
+
+                <div>
+                  <span class="text-[8px] font-bold tracking-widest uppercase text-gold-400 block mb-1">${book.edition}</span>
+                  <h3 class="font-display font-extrabold text-white text-xs leading-snug line-clamp-3">
+                    ${book.title}
+                  </h3>
+                </div>
+
+                <div class="border-t border-white/15 pt-2 flex items-center justify-between">
+                  <span class="text-[9px] text-neutral-300 font-semibold">VURA PRESS</span>
+                  <i class="fa-solid fa-crown text-gold-400 text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Book Details -->
+            <div class="p-6">
+              <div class="flex items-center justify-between text-xs text-neutral-400 mb-2">
+                <span><i class="fa-regular fa-file-pdf text-gold-400 mr-1.5"></i>${book.pages}</span>
+                <span class="font-bold text-gold-400">${book.price}</span>
+              </div>
+
+              <h2 class="font-display font-bold text-lg text-white group-hover:text-gold-400 transition-colors leading-snug">
+                ${book.title}
+              </h2>
+              <p class="text-xs font-medium text-gold-500/90 mt-1 mb-3">
+                ${book.sinhalaTitle}
+              </p>
+              <p class="text-neutral-400 text-xs sm:text-sm leading-relaxed">
+                ${book.description}
+              </p>
+            </div>
+          </div>
+
+          <!-- Download Action Area Under Each Book -->
+          <div class="px-6 pb-6 pt-2">
+            <button
+              onclick="openDownloadModal('${book.id}')"
+              class="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 hover:from-gold-400 hover:to-yellow-300 text-black font-extrabold text-sm tracking-wide shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <i class="fa-solid fa-cloud-arrow-down text-base"></i>
+              <span>Download</span>
+            </button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    /**
+     * Open the Download Verification Modal for a specific book
+     */
+    function openDownloadModal(bookId) {
+      selectedBook = EBOOKS_DATA.find((b) => b.id === bookId);
+      if (!selectedBook) return;
+
+      // Populate modal info
+      document.getElementById('modal-book-title').textContent = selectedBook.title;
+      document.getElementById('modal-book-sinhala').textContent = selectedBook.sinhalaTitle;
+
+      // Reset form & alerts
+      document.getElementById('download-form').reset();
+      document.getElementById('pin-error-box').classList.add('hidden');
+      document.getElementById('download-status-box').classList.add('hidden');
+      document.getElementById('input-pin').type = 'password';
+      document.getElementById('pin-eye-icon').className = 'fa-solid fa-eye mr-1';
+      document.getElementById('pin-eye-text').textContent = 'පෙන්වන්න';
+
+      const modal = document.getElementById('download-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    /**
+     * Close the Download Modal
+     */
+    function closeDownloadModal() {
+      const modal = document.getElementById('download-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    /**
+     * Toggle PIN password visibility
+     */
+    function togglePinVisibility() {
+      const pinInput = document.getElementById('input-pin');
+      const eyeIcon = document.getElementById('pin-eye-icon');
+      const eyeText = document.getElementById('pin-eye-text');
+
+      if (pinInput.type === 'password') {
+        pinInput.type = 'text';
+        eyeIcon.className = 'fa-solid fa-eye-slash mr-1';
+        eyeText.textContent = 'සඟවන්න';
+      } else {
+        pinInput.type = 'password';
+        eyeIcon.className = 'fa-solid fa-eye mr-1';
+        eyeText.textContent = 'පෙන්වන්න';
+      }
+    }
+
+    /**
+     * Validate Form & PIN, then Watermark & Download PDF
+     */
+    async function handleDownloadSubmit(event) {
+      event.preventDefault();
+
+      const fullName = document.getElementById('input-name').value.trim();
+      const regNo = document.getElementById('input-regno').value.trim().toUpperCase();
+      const enteredPin = document.getElementById('input-pin').value.trim();
+
+      const errorBox = document.getElementById('pin-error-box');
+      const statusBox = document.getElementById('download-status-box');
+      const submitBtn = document.getElementById('modal-submit-btn');
+
+      // 1. Strict PIN Validation
+      if (enteredPin !== SITE_CONFIG.MASTER_PIN) {
+        errorBox.classList.remove('hidden');
+        errorBox.classList.remove('animate-shake');
+        void errorBox.offsetWidth; // trigger reflow to restart animation
+        errorBox.classList.add('animate-shake');
+        statusBox.classList.add('hidden');
+        return;
+      }
+
+      // PIN is valid! Hide errors and show processing indicator
+      errorBox.classList.add('hidden');
+      statusBox.classList.remove('hidden');
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+
+      try {
+        await generateAndDownloadWatermarkedPDF(selectedBook, fullName, regNo);
+
+        // Close modal shortly after download triggers
+        setTimeout(() => {
+          statusBox.classList.add('hidden');
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+          closeDownloadModal();
+        }, 1200);
+      } catch (err) {
+        console.error('PDF Watermarking Error:', err);
+        statusBox.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        errorBox.querySelector('strong').textContent = 'PDF ගොනුව සැකසීමේ දෝෂයකි!';
+        errorBox.querySelector('div').lastChild.textContent = ' කරුණාකර PDF ගොනුව නිවැරදිව Upload කර ඇත්දැයි පරීක්ෂා කරන්න.';
+        errorBox.classList.remove('hidden');
+      }
+    }
+
+    /**
+     * Loads the PDF (either real file from ./books/ or generates a clean multi-page sample PDF)
+     * and stamps a non-intrusive diagonal Reg No watermark + footer stamp on EVERY page.
+     */
+    async function generateAndDownloadWatermarkedPDF(book, fullName, regNo) {
+      const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
+      let pdfDoc;
+
+      if (SITE_CONFIG.USE_REAL_PDF_FILES) {
+        // Fetch the actual PDF stored in your GitHub repository (e.g., ./books/book1.pdf)
+        const response = await fetch(book.pdfPath);
+        if (!response.ok) throw new Error('Failed to load PDF file from ' + book.pdfPath);
+        const existingPdfBytes = await response.arrayBuffer();
+        pdfDoc = await PDFDocument.load(existingPdfBytes);
+      } else {
+        // Out-of-the-box working demo PDF generator so you can test immediately
+        pdfDoc = await PDFDocument.create();
+        const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        // Page 1: Cover / Title Page
+        const p1 = pdfDoc.addPage([595, 842]); // A4 size
+        p1.drawRectangle({ x: 0, y: 0, width: 595, height: 842, color: rgb(0.06, 0.06, 0.07) });
+        p1.drawRectangle({ x: 40, y: 40, width: 515, height: 762, borderColor: rgb(0.83, 0.68, 0.21), borderWidth: 2 });
+
+        p1.drawText('VURA OFFICIAL E-BOOK EDITION', {
+          x: 70, y: 740, size: 12, font: titleFont, color: rgb(0.83, 0.68, 0.21)
+        });
+        p1.drawText(book.title, {
+          x: 70, y: 680, size: 24, font: titleFont, color: rgb(1, 1, 1), maxWidth: 450
+        });
+        p1.drawText('Licensed Digital Copy — Personal Use Only', {
+          x: 70, y: 620, size: 13, font: bodyFont, color: rgb(0.75, 0.75, 0.75)
+        });
+        p1.drawText(`Issued To: ${fullName}`, {
+          x: 70, y: 560, size: 14, font: titleFont, color: rgb(0.96, 0.77, 0.09)
+        });
+        p1.drawText(`Registration No: ${regNo}`, {
+          x: 70, y: 535, size: 14, font: titleFont, color: rgb(0.96, 0.77, 0.09)
+        });
+
+        // Page 2: Sample Content Page (demonstrating unobstructed readability)
+        const p2 = pdfDoc.addPage([595, 842]);
+        p2.drawText('Chapter 01: Market Structure & Institutional Flow', {
+          x: 60, y: 760, size: 18, font: titleFont, color: rgb(0.1, 0.1, 0.1)
+        });
+        const sampleLines = [
+          'Understanding market structure is the foundation of consistent trading.',
+          'Institutional participants leave footprints through Break of Structure (BOS)',
+          'and Change of Character (CHoCH) across higher timeframes.',
+          '',
+          'Key Rules Covered in This Volume:',
+          '1. Always identify the Higher Timeframe (HTF) trend direction first.',
+          '2. Wait for liquidity sweeps before entering an Order Block.',
+          '3. Never risk more than 1% - 2% of your capital on a single setup.',
+          '',
+          'Notice how the diagonal Registration Number watermark sits gently behind',
+          'the text with low opacity so your reading experience is 100% unobstructed.'
+        ];
+        sampleLines.forEach((line, idx) => {
+          p2.drawText(line, {
+            x: 60, y: 710 - idx * 24, size: 12, font: bodyFont, color: rgb(0.2, 0.2, 0.2)
+          });
+        });
+      }
+
+      // =========================================================================
+      // APPLY NON-INTRUSIVE WATERMARK TO EVERY PAGE OF THE PDF
+      // =========================================================================
+      const watermarkFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const pages = pdfDoc.getPages();
+
+      pages.forEach((page, index) => {
+        const { width, height } = page.getSize();
+
+        // 1. Subtle Diagonal Center Watermark (Low opacity so content stays crystal clear)
+        const watermarkText = `REG NO: ${regNo}`;
+        const fontSize = Math.min(width, height) * 0.075;
+        const textWidth = watermarkFont.widthOfTextAtSize(watermarkText, fontSize);
+
+        page.drawText(watermarkText, {
+          x: width / 2 - textWidth * 0.35,
+          y: height / 2 - textWidth * 0.25,
+          size: fontSize,
+          font: watermarkFont,
+          color: rgb(0.55, 0.55, 0.55),
+          opacity: SITE_CONFIG.WATERMARK_OPACITY, // Very light (0.13) -> zero interference with reading
+          rotate: degrees(38),
+        });
+
+        // 2. Clean Margin Footer Stamp on Every Page
+        const footerText = `Licensed to: ${fullName}  |  Reg No: ${regNo}  |  Page ${index + 1} of ${pages.length}`;
+        page.drawText(footerText, {
+          x: 45,
+          y: 20,
+          size: 8.5,
+          font: watermarkFont,
+          color: rgb(0.45, 0.45, 0.45),
+          opacity: 0.65,
+        });
+      });
+
+      // Serialize and trigger browser download
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+
+      const safeTitle = book.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const safeReg = regNo.replace(/[^a-zA-Z0-9-]/g, '_');
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${safeTitle}_${safeReg}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    // Setup Guide Modal Controls
+    function openSetupModal() {
+      const modal = document.getElementById('setup-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSetupModal() {
+      const modal = document.getElementById('setup-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  </script>
+</body>
+</html>
